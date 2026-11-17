@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Contratos de integração entre serviços. Versionados no nome (V1): mudança incompatível gera V2. -->
+</Project>

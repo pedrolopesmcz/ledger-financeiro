@@ -1,9 +1,17 @@
 <Solution>
   <Folder Name="/src/" />
+  <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/Ledger.Contracts/Ledger.Contracts.csproj" />
+    <Project Path="src/BuildingBlocks/Ledger.Messaging/Ledger.Messaging.csproj" />
+  </Folder>
   <Folder Name="/src/Lancamentos/">
+    <Project Path="src/Lancamentos/Lancamentos.Api/Lancamentos.Api.csproj" />
+    <Project Path="src/Lancamentos/Lancamentos.Application/Lancamentos.Application.csproj" />
     <Project Path="src/Lancamentos/Lancamentos.Domain/Lancamentos.Domain.csproj" />
+    <Project Path="src/Lancamentos/Lancamentos.Infrastructure/Lancamentos.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Lancamentos.IntegrationTests/Lancamentos.IntegrationTests.csproj" />
     <Project Path="tests/Lancamentos.UnitTests/Lancamentos.UnitTests.csproj" />
   </Folder>
 </Solution>

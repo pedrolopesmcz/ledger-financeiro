@@ -1,0 +1,33 @@
+{
+  "users": [
+    { "name": "ledger", "password": "ledger", "tags": ["administrator"] }
+  ],
+  "vhosts": [{ "name": "/" }],
+  "permissions": [
+    { "user": "ledger", "vhost": "/", "configure": ".*", "write": ".*", "read": ".*" }
+  ],
+  "exchanges": [
+    { "name": "ledger.events", "vhost": "/", "type": "topic", "durable": true, "auto_delete": false, "internal": false, "arguments": {} },
+    { "name": "ledger.events.retry", "vhost": "/", "type": "direct", "durable": true, "auto_delete": false, "internal": false, "arguments": {} },
+    { "name": "ledger.events.dlq", "vhost": "/", "type": "direct", "durable": true, "auto_delete": false, "internal": false, "arguments": {} }
+  ],
+  "queues": [
+    {
+      "name": "consolidado.lancamentos", "vhost": "/", "durable": true, "auto_delete": false,
+      "arguments": { "x-queue-type": "quorum", "x-dead-letter-exchange": "ledger.events.dlq", "x-dead-letter-routing-key": "consolidado.lancamentos.dlq" }
+    },
+    {
+      "name": "consolidado.lancamentos.retry", "vhost": "/", "durable": true, "auto_delete": false,
+      "arguments": { "x-queue-type": "quorum", "x-message-ttl": 5000, "x-dead-letter-exchange": "", "x-dead-letter-routing-key": "consolidado.lancamentos" }
+    },
+    {
+      "name": "consolidado.lancamentos.dlq", "vhost": "/", "durable": true, "auto_delete": false,
+      "arguments": { "x-queue-type": "quorum" }
+    }
+  ],
+  "bindings": [
+    { "source": "ledger.events", "vhost": "/", "destination": "consolidado.lancamentos", "destination_type": "queue", "routing_key": "lancamento.registrado.*", "arguments": {} },
+    { "source": "ledger.events.retry", "vhost": "/", "destination": "consolidado.lancamentos.retry", "destination_type": "queue", "routing_key": "consolidado.lancamentos.retry", "arguments": {} },
+    { "source": "ledger.events.dlq", "vhost": "/", "destination": "consolidado.lancamentos.dlq", "destination_type": "queue", "routing_key": "consolidado.lancamentos.dlq", "arguments": {} }
+  ]
+}

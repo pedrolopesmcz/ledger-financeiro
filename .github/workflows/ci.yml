@@ -22,7 +22,7 @@ jobs:
       - name: Build
         run: dotnet build LedgerFinanceiro.slnx --no-restore -c Release
 
-      - name: Testes unitários
+      - name: Testes (unitários e integração com Testcontainers)
         run: dotnet test LedgerFinanceiro.slnx --no-build -c Release --logger "trx" --collect:"XPlat Code Coverage" --results-directory TestResults
 
       - name: Publicar resultados

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Lancamentos.Application\Lancamentos.Application.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\Ledger.Messaging\Ledger.Messaging.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Migrações em SQL puro, versionadas e aplicadas em ordem (ver MigradorDeBanco). -->
+    <EmbeddedResource Include="Migracoes\*.sql" />
+  </ItemGroup>
+</Project>
