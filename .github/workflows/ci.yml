@@ -30,6 +30,22 @@ jobs:
       - name: Testes (unitários e integração com Testcontainers)
         run: dotnet test LedgerFinanceiro.slnx --no-build -c Release --logger "trx" --collect:"XPlat Code Coverage" --results-directory TestResults
 
+      - name: Resumo dos testes
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          ns={'t':'http://microsoft.com/schemas/VisualStudio/TeamTest/2010'}
+          linhas=[]
+          for f in sorted(glob.glob('TestResults/*.trx')):
+              r=ET.parse(f).getroot()
+              c=r.find('t:ResultSummary/t:Counters',ns).attrib
+              nome=r.find('t:TestDefinitions/t:UnitTest',ns).attrib['storage'].split('/')[-1]
+              linhas.append(f"{nome}: {c['passed']}/{c['total']} aprovados, {c['failed']} falhas")
+          for l in linhas: print(f"::notice::{l}")
+          open(__import__('os').environ['GITHUB_STEP_SUMMARY'],'a').write("## Testes\n"+"\n".join("- "+l for l in linhas)+"\n")
+          PY
+
       - name: Publicar resultados
         if: always()
         uses: actions/upload-artifact@v4
