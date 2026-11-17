@@ -15,12 +15,17 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # Erros de restore/build viram anotações no GitHub (visíveis na aba Checks e pela API).
       - name: Restore
-        run: dotnet restore LedgerFinanceiro.slnx
+        run: |
+          set -o pipefail
+          dotnet restore LedgerFinanceiro.slnx 2>&1 | tee restore.log || { grep -E "error" restore.log | sort -u | head -30 | sed 's/^/::error::/'; exit 1; }
 
       # TreatWarningsAsErrors está no Directory.Build.props: qualquer warning quebra o build.
       - name: Build
-        run: dotnet build LedgerFinanceiro.slnx --no-restore -c Release
+        run: |
+          set -o pipefail
+          dotnet build LedgerFinanceiro.slnx --no-restore -c Release 2>&1 | tee build.log || { grep -E "(error|warning) [A-Z]+[0-9]+" build.log | sort -u | head -40 | sed 's/^/::error::/'; exit 1; }
 
       - name: Testes (unitários e integração com Testcontainers)
         run: dotnet test LedgerFinanceiro.slnx --no-build -c Release --logger "trx" --collect:"XPlat Code Coverage" --results-directory TestResults
