@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Domínio puro: nenhuma dependência externa. Regras de negócio testáveis sem infraestrutura. -->
+</Project>
