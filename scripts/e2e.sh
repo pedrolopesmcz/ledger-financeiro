@@ -13,7 +13,7 @@ CORPO=$(mktemp)
 
 passo()  { printf '\n\033[1m%s\033[0m\n' "$1"; }
 ok()     { printf '  \033[32mOK\033[0m %s\n' "$1"; }
-falhar() { printf '  \033[31mFALHOU\033[0m %s\n' "$1"; cat "$CORPO" 2>/dev/null || true; exit 1; }
+falhar() { printf "  \033[31mFALHOU\033[0m %s\n" "$1"; [[ -n "${GITHUB_ACTIONS:-}" ]] && echo "::error::E2E: $1 $(head -c 300 "$CORPO" 2>/dev/null)"; cat "$CORPO" 2>/dev/null || true; exit 1; }
 
 # req METODO CAMINHO TOKEN [CORPO_JSON] [IDEMPOTENCY_KEY] -> imprime o status HTTP; corpo em $CORPO
 req() {
