@@ -63,9 +63,17 @@ curl -s http://localhost:5000/contas/$CONTA_ANA/saldo -H "Authorization: Bearer 
 ```bash
 dotnet test LedgerFinanceiro.slnx      # unitários e integração (Testcontainers: precisa de Docker)
 ./scripts/e2e.sh                       # ponta a ponta contra o docker compose
+./scripts/carga.sh                     # carga com k6 (em container)
+dotnet tool install -g dotnet-stryker && (cd tests/Lancamentos.UnitTests && dotnet stryker)   # mutação
 ```
 
-A CI (GitHub Actions) compila com warnings tratados como erro, roda todos os testes e executa o E2E com o ambiente completo.
+A CI (GitHub Actions) compila com warnings tratados como erro, roda os 121 testes, executa o E2E e o teste de carga com o ambiente completo e os testes de mutação. Resultados e metodologia: [`docs/qualidade-e-desempenho.md`](docs/qualidade-e-desempenho.md).
+
+| Indicador | Resultado |
+|---|---|
+| Pico de 50 req/s no Consolidado | **0% de perda**, p95 de 5,5 ms (requisito: até 5% de perda) |
+| Estresse até 1.000 req/s | 0% de perda |
+| Score de mutação | 98,8% (Lançamentos) e 100% (Consolidado) |
 
 ## Estrutura
 
