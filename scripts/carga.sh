@@ -15,6 +15,18 @@ TOKEN_BACKOFFICE=$(token -d grant_type=client_credentials -d client_id=backoffic
 TOKEN_ANA=$(token -d grant_type=password -d client_id=app-canais -d username=ana -d password=ana123)
 TOKEN_BRUNO=$(token -d grant_type=password -d client_id=app-canais -d username=bruno -d password=bruno123)
 
+# Aquecimento: garante que as duas contas tenham movimento consolidado antes de medir.
+# (Uma conta sem nenhum lançamento consolidado responde 404 no Consolidado, corretamente.)
+for conta in "$CONTA_ANA" "$CONTA_BRUNO"; do
+  curl -sf -o /dev/null -X POST "http://localhost:5000/contas/$conta/lancamentos" \
+    -H "Authorization: Bearer $TOKEN_BACKOFFICE" -H 'Content-Type: application/json' \
+    -H "Idempotency-Key: aquecimento-$conta-$(date +%s)" -d '{"operacao":"Deposito","valor":1000}'
+  for _ in $(seq 1 30); do
+    curl -sf -o /dev/null "http://localhost:5000/contas/$conta/saldo" -H "Authorization: Bearer $TOKEN_BACKOFFICE" && break
+    sleep 1
+  done
+done
+
 mkdir -p resultados-carga && chmod 777 resultados-carga   # o k6 roda sem root dentro do container
 docker run --rm --network host \
   -v "$PWD/tests/Carga:/scripts:ro" -v "$PWD/resultados-carga:/resultados" \
