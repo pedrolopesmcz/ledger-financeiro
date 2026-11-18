@@ -60,7 +60,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Subir o ambiente completo (docker compose)
-        run: docker compose up -d --build --wait --wait-timeout 420
+        run: |
+          set -o pipefail
+          docker compose up -d --build --wait --wait-timeout 420 2>&1 | tee compose-up.log || {
+            grep -iE "error|failed|not found|denied" compose-up.log | grep -v "^ *#" | sort -u | tail -15 | cut -c1-400 | sed 's/^/::error::/'
+            exit 1
+          }
 
       - name: Teste ponta a ponta
         run: ./scripts/e2e.sh
