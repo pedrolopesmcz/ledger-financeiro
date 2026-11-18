@@ -15,7 +15,7 @@ TOKEN_BACKOFFICE=$(token -d grant_type=client_credentials -d client_id=backoffic
 TOKEN_ANA=$(token -d grant_type=password -d client_id=app-canais -d username=ana -d password=ana123)
 TOKEN_BRUNO=$(token -d grant_type=password -d client_id=app-canais -d username=bruno -d password=bruno123)
 
-mkdir -p resultados-carga
+mkdir -p resultados-carga && chmod 777 resultados-carga   # o k6 roda sem root dentro do container
 docker run --rm --network host \
   -v "$PWD/tests/Carga:/scripts:ro" -v "$PWD/resultados-carga:/resultados" \
   -e GW=http://localhost:5000 \
