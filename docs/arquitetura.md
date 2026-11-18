@@ -250,7 +250,7 @@ Valores monetários são sempre `numeric(18,2)` / `decimal`. Migrações em SQL 
 - **Defesa em profundidade:** o gateway valida o token e limita a taxa; cada serviço valida de novo e autoriza.
 - **Entrada:** valores com no máximo duas casas e teto; tamanhos máximos; enums validados; erros em Problem Details com código estável.
 - **Dados sensíveis:** o razão guarda identificadores, não dados pessoais. Logs sem corpo de requisição nem tokens. Containers sem root.
-- **Cadeia de dependências:** auditoria do NuGet com warnings como erro bloqueou três dependências vulneráveis durante o desenvolvimento (SSH.NET e OpenTelemetry), corrigidas com versões fixadas.
+- **Cadeia de dependências:** a auditoria do NuGet, com warnings tratados como erro, barrou quatro alertas de vulnerabilidade em duas dependências durante o desenvolvimento (SSH.NET e OpenTelemetry), corrigidos com versões fixadas.
 - **Em produção:** TLS em todo tráfego, criptografia em repouso, segredos em cofre, password grant desligado.
 
 Detalhes: [ADR 0009](adr/0009-autenticacao-oauth2-keycloak.md) e [ADR 0008](adr/0008-api-gateway.md).
