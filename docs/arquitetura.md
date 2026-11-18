@@ -252,6 +252,7 @@ sequenceDiagram
 | [0010](adr/0010-lancamentos-imutaveis.md) | Lançamentos imutáveis, correção por estorno |
 | [0011](adr/0011-cache-redis.md) | Cache Redis no Consolidado |
 | [0012](adr/0012-observabilidade.md) | Observabilidade com OpenTelemetry |
+| [0013](adr/0013-projecao-do-consolidado.md) | Projeção do Consolidado: tabelas, dia contábil, paralelismo, retry e cache |
 
 ## 9. Fora do escopo e evoluções
 
