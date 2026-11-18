@@ -33,7 +33,7 @@ espera_status() { # descricao status_esperado segundos comando...
   falhar "$desc (esperado $esperado)"
 }
 
-saldo_consolidado() { req GET "/contas/$1/saldo" "$2" > /dev/null; jq -r '.saldo // empty' "$CORPO"; }
+saldo_consolidado() { req GET "/contas/$1/saldo" "$2" > /dev/null; jq -r '.saldo // empty | . + 0' "$CORPO"; }
 
 espera_saldo() { # descricao conta token valor segundos
   for _ in $(seq 1 "$5"); do
@@ -64,7 +64,7 @@ done
 # Execuções repetidas: chaves únicas por rodada e saldo inicial lido da própria conta.
 RODADA=$(date +%s)
 req GET "/contas/$CONTA_ANA" "$ANA" > /dev/null
-INICIAL=$(jq -r .saldo "$CORPO")
+INICIAL=$(jq -r '.saldo + 0' "$CORPO")
 
 passo "4. Lançamentos"
 [[ $(req POST "/contas/$CONTA_ANA/lancamentos" "$BACKOFFICE" '{"operacao":"Deposito","valor":500}' "dep-$RODADA") == 201 ]] && ok "backoffice deposita 500" || falhar "depósito"
@@ -74,7 +74,7 @@ passo "4. Lançamentos"
 [[ $(req POST "/contas/$CONTA_ANA/lancamentos" "$ANA" '{"operacao":"Saque","valor":999999}' "saque-$RODADA") == 422 ]] && ok "saque acima do saldo: 422" || falhar "saldo insuficiente"
 ESPERADO=$(jq -n "$INICIAL + 380")
 req GET "/contas/$CONTA_ANA" "$ANA" > /dev/null
-[[ $(jq -r .saldo "$CORPO") == "$ESPERADO" ]] && ok "saldo de autorização: $ESPERADO" || falhar "saldo de autorização"
+[[ $(jq -r '.saldo + 0' "$CORPO") == "$ESPERADO" ]] && ok "saldo de autorização: $ESPERADO" || falhar "saldo de autorização"
 
 passo "5. Titularidade"
 [[ $(req GET "/contas/$CONTA_BRUNO" "$ANA") == 404 ]] && ok "Ana não enxerga a conta do Bruno (404)" || falhar "conta alheia no Lançamentos"
