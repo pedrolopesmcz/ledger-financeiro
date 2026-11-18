@@ -1,4 +1,5 @@
 using Consolidado.Core;
+using Ledger.Seguranca;
 
 namespace Consolidado.Api;
 
@@ -6,7 +7,10 @@ public static class Endpoints
 {
     public static IEndpointRouteBuilder MapConsolidadoEndpoints(this IEndpointRouteBuilder app)
     {
-        var contas = app.MapGroup("/contas/{contaId:guid}").WithTags("Consolidado");
+        var contas = app.MapGroup("/contas/{contaId:guid}")
+            .WithTags("Consolidado")
+            .RequireAuthorization(Politicas.SaldoRead)
+            .AddEndpointFilter<FiltroDeTitularidade>();
 
         // Sem "em": saldo atual (com cache). Com "em": saldo naquele instante.
         contas.MapGet("/saldo", async (Guid contaId, DateTimeOffset? em, ServicoDeConsulta servico, CancellationToken ct) =>

@@ -1,6 +1,7 @@
 using Lancamentos.Application;
 using Lancamentos.Domain.Politicas;
 using Ledger.Messaging;
+using Ledger.Seguranca;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<IRepositorioDeContas, RepositorioDeContas>();
         services.AddScoped<IUnidadeDeTrabalho, UnidadeDeTrabalhoEf>();
         services.AddScoped<IOutbox, OutboxEf>();
+        services.AddScoped<IVerificadorDeTitularidade, VerificadorDeTitularidade>();
         services.AddScoped<ExecutorIdempotente>();
         services.AddScoped<ServicoDeLancamentos>();
 

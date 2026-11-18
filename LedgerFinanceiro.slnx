@@ -3,13 +3,18 @@
   <Folder Name="/src/BuildingBlocks/">
     <Project Path="src/BuildingBlocks/Ledger.Contracts/Ledger.Contracts.csproj" />
     <Project Path="src/BuildingBlocks/Ledger.Messaging/Ledger.Messaging.csproj" />
+    <Project Path="src/BuildingBlocks/Ledger.Observabilidade/Ledger.Observabilidade.csproj" />
     <Project Path="src/BuildingBlocks/Ledger.Postgres/Ledger.Postgres.csproj" />
+    <Project Path="src/BuildingBlocks/Ledger.Seguranca/Ledger.Seguranca.csproj" />
   </Folder>
   <Folder Name="/src/Consolidado/">
     <Project Path="src/Consolidado/Consolidado.Api/Consolidado.Api.csproj" />
     <Project Path="src/Consolidado/Consolidado.Core/Consolidado.Core.csproj" />
     <Project Path="src/Consolidado/Consolidado.Infrastructure/Consolidado.Infrastructure.csproj" />
     <Project Path="src/Consolidado/Consolidado.Worker/Consolidado.Worker.csproj" />
+  </Folder>
+  <Folder Name="/src/Gateway/">
+    <Project Path="src/Gateway/Ledger.Gateway/Ledger.Gateway.csproj" />
   </Folder>
   <Folder Name="/src/Lancamentos/">
     <Project Path="src/Lancamentos/Lancamentos.Api/Lancamentos.Api.csproj" />
@@ -20,7 +25,9 @@
   <Folder Name="/tests/">
     <Project Path="tests/Consolidado.IntegrationTests/Consolidado.IntegrationTests.csproj" />
     <Project Path="tests/Consolidado.UnitTests/Consolidado.UnitTests.csproj" />
+    <Project Path="tests/Gateway.IntegrationTests/Gateway.IntegrationTests.csproj" />
     <Project Path="tests/Lancamentos.IntegrationTests/Lancamentos.IntegrationTests.csproj" />
     <Project Path="tests/Lancamentos.UnitTests/Lancamentos.UnitTests.csproj" />
+    <Project Path="tests/Ledger.TestesComuns/Ledger.TestesComuns.csproj" />
   </Folder>
 </Solution>

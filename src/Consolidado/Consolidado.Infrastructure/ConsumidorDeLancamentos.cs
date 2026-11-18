@@ -1,8 +1,11 @@
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Text;
 using System.Text.Json;
 using Consolidado.Core;
 using Ledger.Contracts;
 using Ledger.Messaging;
+using Ledger.Observabilidade;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -33,6 +36,12 @@ public sealed partial class ConsumidorDeLancamentos : BackgroundService
 {
     public const string CabecalhoTentativas = "x-tentativas";
     public const string CabecalhoErro = "x-ultimo-erro";
+
+    private static readonly Histogram<double> Defasagem = Telemetria.Medidor.CreateHistogram<double>(
+        "ledger.consolidado.defasagem", unit: "ms", description: "Tempo entre o lançamento e a sua consolidação");
+
+    private static readonly Counter<long> Projetados = Telemetria.Medidor.CreateCounter<long>(
+        "ledger.consolidado.eventos", description: "Eventos recebidos, por resultado (novo, duplicado, retry, dlq)");
 
     private readonly IServiceScopeFactory _scopes;
     private readonly RabbitMqOptions _rabbit;
@@ -133,8 +142,16 @@ public sealed partial class ConsumidorDeLancamentos : BackgroundService
             // tratado abaixo como mensagem inválida
         }
 
+        // Continua o trace iniciado na requisição HTTP do Lançamentos (propagado pela outbox).
+        using var atividade = Telemetria.Fonte.StartActivity(
+            "consolidado projetar",
+            ActivityKind.Consumer,
+            Telemetria.ContextoPai(LerTexto(entrega.BasicProperties.Headers, "traceparent")));
+        atividade?.SetTag("messaging.message.id", entrega.BasicProperties.MessageId);
+
         if (evento is null || evento.EventId == Guid.Empty)
         {
+            Projetados.Add(1, new KeyValuePair<string, object?>("resultado", "dlq"));
             await EncaminharAsync(canal, entrega, DestinoDaFalha.FilaDeMensagensMortas, tentativas, "mensagem inválida", ct).ConfigureAwait(false);
             await canal.BasicAckAsync(entrega.DeliveryTag, multiple: false, ct).ConfigureAwait(false);
             return;
@@ -147,10 +164,13 @@ public sealed partial class ConsumidorDeLancamentos : BackgroundService
 
             if (await projetor.ProjetarAsync(evento, ct).ConfigureAwait(false))
             {
+                Projetados.Add(1, new KeyValuePair<string, object?>("resultado", "novo"));
+                Defasagem.Record((DateTimeOffset.UtcNow - evento.OcorridoEm).TotalMilliseconds);
                 await escopo.ServiceProvider.GetRequiredService<InvalidadorDeCache>().InvalidarAsync(evento, ct).ConfigureAwait(false);
             }
             else
             {
+                Projetados.Add(1, new KeyValuePair<string, object?>("resultado", "duplicado"));
                 LogDuplicata(_logger, evento.EventId);
             }
 
@@ -159,6 +179,8 @@ public sealed partial class ConsumidorDeLancamentos : BackgroundService
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             var destino = _politica.Decidir(tentativas + 1, mensagemInvalida: false);
+            atividade?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            Projetados.Add(1, new KeyValuePair<string, object?>("resultado", destino == DestinoDaFalha.Retentar ? "retry" : "dlq"));
             LogFalhaAoProjetar(_logger, ex, evento.EventId, tentativas + 1, destino);
             await EncaminharAsync(canal, entrega, destino, tentativas + 1, ex.Message, ct).ConfigureAwait(false);
             await canal.BasicAckAsync(entrega.DeliveryTag, multiple: false, ct).ConfigureAwait(false);
@@ -194,6 +216,16 @@ public sealed partial class ConsumidorDeLancamentos : BackgroundService
             await canal.BasicPublishAsync(Topologia.ExchangeDlq, Topologia.FilaConsolidadoDlq, mandatory: true, propriedades, entrega.Body, ct).ConfigureAwait(false);
         }
     }
+
+    private static string? LerTexto(IDictionary<string, object?>? cabecalhos, string nome) =>
+        cabecalhos is not null && cabecalhos.TryGetValue(nome, out var valor)
+            ? valor switch
+            {
+                byte[] b => Encoding.UTF8.GetString(b),
+                string s => s,
+                _ => null,
+            }
+            : null;
 
     private static int LerTentativas(IDictionary<string, object?>? cabecalhos)
     {

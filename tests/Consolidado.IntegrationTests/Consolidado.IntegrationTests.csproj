@@ -19,5 +19,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Consolidado\Consolidado.Api\Consolidado.Api.csproj" />
+    <ProjectReference Include="..\Ledger.TestesComuns\Ledger.TestesComuns.csproj" />
   </ItemGroup>
 </Project>

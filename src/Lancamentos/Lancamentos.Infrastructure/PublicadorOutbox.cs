@@ -1,4 +1,7 @@
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Text;
+using Ledger.Observabilidade;
 using Ledger.Messaging;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -38,10 +41,16 @@ public sealed partial class PublicadorOutbox : BackgroundService
         FOR UPDATE SKIP LOCKED
         """;
 
+    private static readonly Counter<long> Publicados = Telemetria.Medidor.CreateCounter<long>("ledger.outbox.publicados", description: "Eventos publicados no broker");
+    private static readonly Counter<long> Falhas = Telemetria.Medidor.CreateCounter<long>("ledger.outbox.falhas", description: "Falhas ao publicar no broker");
+
     private readonly NpgsqlDataSource _dataSource;
     private readonly IPublicadorDeEventos _publicador;
     private readonly OutboxOptions _options;
     private readonly ILogger<PublicadorOutbox> _logger;
+
+    private long _pendentes;
+    private double _idadeSegundos;
 
     public PublicadorOutbox(
         NpgsqlDataSource dataSource,
@@ -54,6 +63,10 @@ public sealed partial class PublicadorOutbox : BackgroundService
         _publicador = publicador;
         _options = options.Value;
         _logger = logger;
+
+        // Sinais de saúde da outbox: se crescerem, o broker está fora ou o relay não dá conta.
+        Telemetria.Medidor.CreateObservableGauge("ledger.outbox.pendentes", () => Interlocked.Read(ref _pendentes), description: "Eventos aguardando publicação");
+        Telemetria.Medidor.CreateObservableGauge("ledger.outbox.idade", () => Volatile.Read(ref _idadeSegundos), unit: "s", description: "Idade do evento pendente mais antigo");
     }
 
     /// <summary>Publica um lote. Retorna quantos eventos foram publicados. Público para testes.</summary>
@@ -83,14 +96,20 @@ public sealed partial class PublicadorOutbox : BackgroundService
 
         foreach (var mensagem in pendentes)
         {
+            // Continua o trace iniciado na requisição HTTP que gerou o lançamento.
+            using var atividade = Telemetria.Fonte.StartActivity("outbox publicar", ActivityKind.Producer, Telemetria.ContextoPai(mensagem.TraceParent));
+            atividade?.SetTag("messaging.message.id", mensagem.Id);
             try
             {
-                await _publicador.PublicarAsync(mensagem.Tipo, mensagem.Id, Encoding.UTF8.GetBytes(mensagem.Payload), mensagem.TraceParent, ct)
+                await _publicador.PublicarAsync(mensagem.Tipo, mensagem.Id, Encoding.UTF8.GetBytes(mensagem.Payload), atividade?.Id ?? mensagem.TraceParent, ct)
                     .ConfigureAwait(false);
                 publicados.Add(mensagem.Id);
+                Publicados.Add(1);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                atividade?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                Falhas.Add(1);
                 // Para no primeiro erro: o broker provavelmente está fora, não adianta insistir no lote.
                 falha = ex;
                 idComFalha = mensagem.Id;
@@ -132,8 +151,15 @@ public sealed partial class PublicadorOutbox : BackgroundService
         }
 
         var espera = _options.Intervalo;
+        var proximaMedicao = DateTimeOffset.MinValue;
         while (!stoppingToken.IsCancellationRequested)
         {
+            if (DateTimeOffset.UtcNow >= proximaMedicao)
+            {
+                await MedirAsync(stoppingToken).ConfigureAwait(false);
+                proximaMedicao = DateTimeOffset.UtcNow.AddSeconds(5);
+            }
+
             try
             {
                 var quantidade = await PublicarLoteAsync(stoppingToken).ConfigureAwait(false);
@@ -165,6 +191,28 @@ public sealed partial class PublicadorOutbox : BackgroundService
             }
         }
     }
+
+    private async Task MedirAsync(CancellationToken ct)
+    {
+        try
+        {
+            await using var comando = _dataSource.CreateCommand(
+                "SELECT count(*), COALESCE(EXTRACT(EPOCH FROM now() - min(criada_em)), 0)::float8 FROM outbox WHERE publicada_em IS NULL");
+            await using var leitor = await comando.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            if (await leitor.ReadAsync(ct).ConfigureAwait(false))
+            {
+                Interlocked.Exchange(ref _pendentes, leitor.GetInt64(0));
+                Volatile.Write(ref _idadeSegundos, leitor.GetDouble(1));
+            }
+        }
+        catch (Exception ex) when (ex is NpgsqlException or TimeoutException)
+        {
+            LogFalhaNaMedicao(_logger, ex);
+        }
+    }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Não foi possível medir a outbox")]
+    private static partial void LogFalhaNaMedicao(ILogger logger, Exception ex);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Falha ao publicar a outbox; nova tentativa em {EsperaMs} ms")]
     private static partial void LogFalhaNaPublicacao(ILogger logger, Exception ex, double esperaMs);

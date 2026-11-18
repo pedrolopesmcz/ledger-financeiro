@@ -1,8 +1,11 @@
 using Consolidado.Infrastructure;
+using Ledger.Observabilidade;
 using Ledger.Postgres;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddLedgerObservabilidade("consolidado-worker");
 
 builder.Services.AddConsolidadoProjecao(builder.Configuration);
 builder.Services.AddHealthChecks();

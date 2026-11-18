@@ -13,7 +13,7 @@ internal static class Fixtures
     public static readonly IPoliticaDeConta Cartao = new PoliticaCartaoCredito();
 
     public static Conta NovaConta(TipoConta tipo, decimal limite = 0m) =>
-        Conta.Abrir(Guid.NewGuid(), tipo, limite, Agora).Valor;
+        Conta.Abrir(Guid.NewGuid(), Guid.NewGuid(), tipo, limite, Agora).Valor;
 
     public static ValorMonetario Reais(decimal quantia) => ValorMonetario.Criar(quantia).Valor;
 

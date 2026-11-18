@@ -7,7 +7,7 @@ public sealed record RegistrarLancamento(Guid ContaId, TipoOperacao Operacao, de
 
 public sealed record EstornarLancamento(Guid ContaId, Guid LancamentoId, string? Motivo, string IdempotencyKey);
 
-public sealed record AbrirConta(Guid ContaId, TipoConta Tipo, decimal Limite);
+public sealed record AbrirConta(Guid ContaId, Guid TitularId, TipoConta Tipo, decimal Limite);
 
 public sealed class ServicoDeLancamentos
 {
@@ -108,7 +108,7 @@ public sealed class ServicoDeLancamentos
     {
         ArgumentNullException.ThrowIfNull(comando);
 
-        var conta = Conta.Abrir(comando.ContaId, comando.Tipo, comando.Limite, _relogio.GetUtcNow());
+        var conta = Conta.Abrir(comando.ContaId, comando.TitularId, comando.Tipo, comando.Limite, _relogio.GetUtcNow());
         if (!conta.Sucesso)
         {
             return Resultado<ContaDto>.Falha(conta.Erro!);

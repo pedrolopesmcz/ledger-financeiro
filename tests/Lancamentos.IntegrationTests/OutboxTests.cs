@@ -21,7 +21,7 @@ public sealed class OutboxTests
     {
         var fila = await CriarFilaDeTesteAsync();
         await using var factory = new ApiFactory(Postgres, _containers.RabbitMq.GetConnectionString());
-        using var client = factory.CreateClient();
+        using var client = factory.ClienteBackoffice();
         var contaId = await client.AbrirContaAsync("ContaDigital", 0);
         var lancamento = await (await client.PostAsync($"/contas/{contaId}/lancamentos", new { operacao = "Deposito", valor = 42m }, "relay-1"))
             .LerAsync<LancamentoResposta>();
@@ -41,7 +41,7 @@ public sealed class OutboxTests
     {
         // Porta onde não há broker: simula o RabbitMQ indisponível.
         await using var factory = new ApiFactory(Postgres, "amqp://guest:guest@127.0.0.1:1/");
-        using var client = factory.CreateClient();
+        using var client = factory.ClienteBackoffice();
         var contaId = await client.AbrirContaAsync("ContaDigital", 0);
 
         var resposta = await client.PostAsync($"/contas/{contaId}/lancamentos", new { operacao = "Deposito", valor = 10m }, "sem-broker");

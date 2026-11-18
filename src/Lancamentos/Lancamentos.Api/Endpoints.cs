@@ -1,11 +1,15 @@
+using System.Diagnostics.Metrics;
+using System.Security.Claims;
 using Lancamentos.Application;
 using Lancamentos.Domain.Comum;
 using Lancamentos.Domain.Contas;
+using Ledger.Observabilidade;
+using Ledger.Seguranca;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Lancamentos.Api;
 
-public sealed record AbrirContaRequest(Guid? Id, TipoConta Tipo, decimal Limite);
+public sealed record AbrirContaRequest(Guid? Id, Guid TitularId, TipoConta Tipo, decimal Limite);
 
 public sealed record AlterarLimiteRequest(decimal Limite);
 
@@ -17,33 +21,56 @@ public static class Endpoints
 {
     public const string CabecalhoIdempotencia = "Idempotency-Key";
 
+    /// <summary>
+    /// Operações que o próprio cliente pode iniciar com o token dele. Créditos
+    /// (depósito, Pix recebido) e compras chegam por sistemas do banco (rede de
+    /// cartões, SPI), que usam token de serviço com acesso a todas as contas.
+    /// </summary>
+    public static readonly IReadOnlySet<TipoOperacao> IniciadasPeloCliente = new HashSet<TipoOperacao>
+    {
+        TipoOperacao.PixEnviado,
+        TipoOperacao.Saque,
+        TipoOperacao.PagamentoFatura,
+    };
+
+    private static readonly Counter<long> Registrados = Telemetria.Medidor.CreateCounter<long>(
+        "ledger.lancamentos.registrados", description: "Lançamentos gravados");
+
+    private static readonly Counter<long> Recusados = Telemetria.Medidor.CreateCounter<long>(
+        "ledger.lancamentos.recusados", description: "Lançamentos recusados por regra de negócio");
+
     public static IEndpointRouteBuilder MapLancamentosEndpoints(this IEndpointRouteBuilder app)
     {
-        var contas = app.MapGroup("/contas").WithTags("Contas");
-
-        contas.MapPost("/", async (AbrirContaRequest req, ServicoDeLancamentos servico, CancellationToken ct) =>
+        app.MapPost("/contas", async (AbrirContaRequest req, ServicoDeLancamentos servico, CancellationToken ct) =>
         {
-            var resultado = await servico.AbrirContaAsync(new AbrirConta(req.Id ?? Guid.CreateVersion7(), req.Tipo, req.Limite), ct);
+            var resultado = await servico.AbrirContaAsync(new AbrirConta(req.Id ?? Guid.CreateVersion7(), req.TitularId, req.Tipo, req.Limite), ct);
             return resultado.Sucesso
                 ? Results.Created($"/contas/{resultado.Valor.Id}", resultado.Valor)
                 : Problema(resultado.Erro!);
-        });
+        }).RequireAuthorization(Politicas.ContasAdmin).WithTags("Contas");
 
-        contas.MapGet("/{contaId:guid}", async (Guid contaId, ServicoDeLancamentos servico, CancellationToken ct) =>
-            await servico.ConsultarContaAsync(contaId, ct) is { } conta
-                ? Results.Ok(conta)
-                : Problema(Erros.ContaNaoEncontrada));
+        // Todas as rotas abaixo tratam de uma conta específica: passam pelo filtro de titularidade.
+        var conta = app.MapGroup("/contas/{contaId:guid}")
+            .WithTags("Contas")
+            .AddEndpointFilter<FiltroDeTitularidade>();
 
-        contas.MapPut("/{contaId:guid}/limite", async (Guid contaId, AlterarLimiteRequest req, ServicoDeLancamentos servico, CancellationToken ct) =>
+        conta.MapGet("/", async (Guid contaId, ServicoDeLancamentos servico, CancellationToken ct) =>
+            await servico.ConsultarContaAsync(contaId, ct) is { } dto
+                ? Results.Ok(dto)
+                : Problema(Erros.ContaNaoEncontrada))
+            .RequireAuthorization(Politicas.SaldoRead);
+
+        conta.MapPut("/limite", async (Guid contaId, AlterarLimiteRequest req, ServicoDeLancamentos servico, CancellationToken ct) =>
         {
             var resultado = await servico.AlterarLimiteAsync(contaId, req.Limite, ct);
             return resultado.Sucesso ? Results.Ok(resultado.Valor) : Problema(resultado.Erro!);
-        });
+        }).RequireAuthorization(Politicas.ContasAdmin);
 
-        contas.MapPost("/{contaId:guid}/lancamentos", async (
+        conta.MapPost("/lancamentos", async (
             Guid contaId,
             RegistrarLancamentoRequest req,
             [FromHeader(Name = CabecalhoIdempotencia)] string? chave,
+            ClaimsPrincipal usuario,
             ServicoDeLancamentos servico,
             CancellationToken ct) =>
         {
@@ -52,16 +79,27 @@ public static class Endpoints
                 return ChaveAusente();
             }
 
-            var resultado = await servico.RegistrarAsync(new RegistrarLancamento(contaId, req.Operacao, req.Valor, req.Descricao, chave), ct);
-            return Resposta(resultado);
-        });
+            if (!usuario.AcessaTodasAsContas() && !IniciadasPeloCliente.Contains(req.Operacao))
+            {
+                return Results.Problem(
+                    statusCode: StatusCodes.Status403Forbidden,
+                    title: $"A operação {req.Operacao} não pode ser iniciada pelo cliente.",
+                    type: "https://ledger-financeiro/erros/operacao_nao_autorizada",
+                    extensions: new Dictionary<string, object?> { ["codigo"] = "operacao_nao_autorizada" });
+            }
 
-        contas.MapGet("/{contaId:guid}/lancamentos/{lancamentoId:guid}", async (Guid contaId, Guid lancamentoId, ServicoDeLancamentos servico, CancellationToken ct) =>
+            var resultado = await servico.RegistrarAsync(new RegistrarLancamento(contaId, req.Operacao, req.Valor, req.Descricao, chave), ct);
+            Medir(resultado, req.Operacao.ToString());
+            return Resposta(resultado);
+        }).RequireAuthorization(Politicas.LancamentosWrite);
+
+        conta.MapGet("/lancamentos/{lancamentoId:guid}", async (Guid contaId, Guid lancamentoId, ServicoDeLancamentos servico, CancellationToken ct) =>
             await servico.ConsultarLancamentoAsync(contaId, lancamentoId, ct) is { } lancamento
                 ? Results.Ok(lancamento)
-                : Problema(Erros.LancamentoNaoEncontrado));
+                : Problema(Erros.LancamentoNaoEncontrado))
+            .RequireAuthorization(Politicas.SaldoRead);
 
-        contas.MapPost("/{contaId:guid}/lancamentos/{lancamentoId:guid}/estorno", async (
+        conta.MapPost("/lancamentos/{lancamentoId:guid}/estorno", async (
             Guid contaId,
             Guid lancamentoId,
             EstornarRequest? req,
@@ -75,10 +113,23 @@ public static class Endpoints
             }
 
             var resultado = await servico.EstornarAsync(new EstornarLancamento(contaId, lancamentoId, req?.Motivo, chave), ct);
+            Medir(resultado, nameof(TipoOperacao.Estorno));
             return Resposta(resultado);
-        });
+        }).RequireAuthorization(Politicas.LancamentosEstorno);
 
         return app;
+    }
+
+    private static void Medir(Resultado<RespostaLancamento> resultado, string operacao)
+    {
+        if (resultado.Sucesso && !resultado.Valor.Repetido)
+        {
+            Registrados.Add(1, new KeyValuePair<string, object?>("operacao", operacao));
+        }
+        else if (!resultado.Sucesso)
+        {
+            Recusados.Add(1, new KeyValuePair<string, object?>("codigo", resultado.Erro!.Codigo));
+        }
     }
 
     private static IResult Resposta(Resultado<RespostaLancamento> resultado)

@@ -15,15 +15,22 @@ public sealed class Conta
     {
     }
 
-    private Conta(Guid id, TipoConta tipo, decimal limite, DateTimeOffset abertaEm)
+    private Conta(Guid id, Guid titularId, TipoConta tipo, decimal limite, DateTimeOffset abertaEm)
     {
         Id = id;
+        TitularId = titularId;
         Tipo = tipo;
         Limite = limite;
         AbertaEm = abertaEm;
     }
 
     public Guid Id { get; private set; }
+
+    /// <summary>
+    /// Cliente dono da conta (o "sub" do token). O provedor de identidade diz
+    /// quem é o usuário; quem diz de quem é a conta é o banco.
+    /// </summary>
+    public Guid TitularId { get; private set; }
 
     public TipoConta Tipo { get; private set; }
 
@@ -38,11 +45,16 @@ public sealed class Conta
 
     public DateTimeOffset AbertaEm { get; private set; }
 
-    public static Resultado<Conta> Abrir(Guid id, TipoConta tipo, decimal limite, DateTimeOffset agora)
+    public static Resultado<Conta> Abrir(Guid id, Guid titularId, TipoConta tipo, decimal limite, DateTimeOffset agora)
     {
         if (id == Guid.Empty)
         {
             return Resultado<Conta>.Falha("conta_invalida", "O identificador da conta é obrigatório.");
+        }
+
+        if (titularId == Guid.Empty)
+        {
+            return Resultado<Conta>.Falha("titular_invalido", "O titular da conta é obrigatório.");
         }
 
         if (!Enum.IsDefined(tipo))
@@ -55,7 +67,7 @@ public sealed class Conta
             return Resultado<Conta>.Falha("limite_invalido", "O limite deve ser zero ou positivo, com até duas casas decimais.");
         }
 
-        return Resultado<Conta>.Ok(new Conta(id, tipo, limite, agora));
+        return Resultado<Conta>.Ok(new Conta(id, titularId, tipo, limite, agora));
     }
 
     public Resultado<Lancamento> Registrar(

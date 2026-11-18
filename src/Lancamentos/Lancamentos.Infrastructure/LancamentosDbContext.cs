@@ -25,6 +25,7 @@ public sealed class LancamentosDbContext : DbContext
             b.ToTable("contas");
             b.HasKey(c => c.Id);
             b.Property(c => c.Id).HasColumnName("id").ValueGeneratedNever();
+            b.Property(c => c.TitularId).HasColumnName("titular_id");
             b.Property(c => c.Tipo).HasColumnName("tipo").HasConversion<short>();
             b.Property(c => c.Saldo).HasColumnName("saldo").HasPrecision(18, 2);
             b.Property(c => c.Limite).HasColumnName("limite").HasPrecision(18, 2);

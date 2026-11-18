@@ -3,12 +3,12 @@ using Ledger.Contracts;
 
 namespace Lancamentos.Application;
 
-public sealed record ContaDto(Guid Id, TipoConta Tipo, decimal Saldo, decimal Limite, decimal Disponivel, DateTimeOffset AbertaEm)
+public sealed record ContaDto(Guid Id, Guid TitularId, TipoConta Tipo, decimal Saldo, decimal Limite, decimal Disponivel, DateTimeOffset AbertaEm)
 {
     public static ContaDto De(Conta conta)
     {
         ArgumentNullException.ThrowIfNull(conta);
-        return new(conta.Id, conta.Tipo, conta.Saldo, conta.Limite, conta.Saldo + conta.Limite, conta.AbertaEm);
+        return new(conta.Id, conta.TitularId, conta.Tipo, conta.Saldo, conta.Limite, conta.Saldo + conta.Limite, conta.AbertaEm);
     }
 }
 
@@ -49,5 +49,6 @@ internal static class Eventos
         ValorComSinal: l.ValorComSinal,
         SaldoApos: l.SaldoApos,
         OcorridoEm: l.OcorridoEm,
-        LancamentoOriginalId: l.LancamentoOriginalId);
+        LancamentoOriginalId: l.LancamentoOriginalId,
+        TitularId: conta.TitularId);
 }

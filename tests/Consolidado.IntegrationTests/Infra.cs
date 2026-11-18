@@ -4,6 +4,7 @@ using Consolidado.Infrastructure;
 using Ledger.Contracts;
 using Ledger.Messaging;
 using Ledger.Postgres;
+using Ledger.TestesComuns;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -42,7 +43,7 @@ public sealed class Containers : IAsyncLifetime
         await Redis.DisposeAsync();
     }
 
-    public Dictionary<string, string?> Configuracao(string? redis = null) => new()
+    public Dictionary<string, string?> Configuracao(string? redis = null) => new(Tokens.Configuracao)
     {
         ["ConnectionStrings:Consolidado"] = Postgres.GetConnectionString(),
         ["ConnectionStrings:Redis"] = redis ?? RedisConnection,
@@ -118,6 +119,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     public ApiFactory(Dictionary<string, string?> config) => _config = config;
 
+    public HttpClient ClienteBackoffice() => CreateClient().ComToken(Tokens.Backoffice());
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -134,7 +137,7 @@ public static class Eventos
     public static DateTimeOffset Brasilia(int dia, int hora, int minuto = 0) =>
         new(2026, 11, dia, hora, minuto, 0, TimeSpan.FromHours(-3));
 
-    public static LancamentoRegistradoV1 Novo(Guid conta, decimal valorComSinal, DateTimeOffset quando) => new(
+    public static LancamentoRegistradoV1 Novo(Guid conta, decimal valorComSinal, DateTimeOffset quando, Guid? titular = null) => new(
         EventId: Guid.NewGuid(),
         LancamentoId: Guid.NewGuid(),
         ContaId: conta,
@@ -145,7 +148,8 @@ public static class Eventos
         ValorComSinal: valorComSinal,
         SaldoApos: 0m,
         OcorridoEm: quando,
-        LancamentoOriginalId: null);
+        LancamentoOriginalId: null,
+        TitularId: titular ?? Guid.Empty);
 }
 
 public static class Esperar

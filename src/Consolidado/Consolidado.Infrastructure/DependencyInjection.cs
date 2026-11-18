@@ -1,5 +1,6 @@
 using Consolidado.Core;
 using Ledger.Messaging;
+using Ledger.Seguranca;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -46,6 +47,7 @@ public static class DependencyInjection
         services.AddConsolidadoComum(configuration);
         services.AddSingleton<IConsultasDeSaldo, ConsultasPostgres>();
         services.AddSingleton<ServicoDeConsulta>();
+        services.AddSingleton<IVerificadorDeTitularidade, VerificadorDeTitularidade>();
         return services;
     }
 

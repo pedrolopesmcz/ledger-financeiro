@@ -40,8 +40,8 @@ public sealed class ProjetorPostgres : IProjetorDeSaldos
         """;
 
     private const string SqlPosicao = """
-        INSERT INTO posicoes (conta_id, saldo, posicao_em, atualizada_em)
-        VALUES (@conta, @delta, @ocorrido, now())
+        INSERT INTO posicoes (conta_id, titular_id, saldo, posicao_em, atualizada_em)
+        VALUES (@conta, @titular, @delta, @ocorrido, now())
         ON CONFLICT (conta_id) DO UPDATE SET
             saldo         = posicoes.saldo + @delta,
             posicao_em    = GREATEST(posicoes.posicao_em, EXCLUDED.posicao_em),
@@ -108,6 +108,7 @@ public sealed class ProjetorPostgres : IProjetorDeSaldos
         comando.Parameters.AddWithValue("creditos", delta > 0 ? delta : 0m);
         comando.Parameters.AddWithValue("debitos", delta < 0 ? -delta : 0m);
         comando.Parameters.AddWithValue("ocorrido", evento.OcorridoEm.ToUniversalTime());
+        comando.Parameters.AddWithValue("titular", evento.TitularId);
         await comando.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
 }

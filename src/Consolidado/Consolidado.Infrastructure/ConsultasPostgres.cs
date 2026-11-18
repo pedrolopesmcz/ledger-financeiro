@@ -1,4 +1,5 @@
 using Consolidado.Core;
+using Ledger.Seguranca;
 using Npgsql;
 
 namespace Consolidado.Infrastructure;
@@ -85,5 +86,19 @@ public sealed class ConsultasPostgres : IConsultasDeSaldo
 
         var saldo = (decimal)(await comando.ExecuteScalarAsync(ct).ConfigureAwait(false))!;
         return new SaldoNoInstante(contaId, instante, saldo, posicao.PosicaoEm);
+    }
+}
+
+public sealed class VerificadorDeTitularidade : IVerificadorDeTitularidade
+{
+    private readonly NpgsqlDataSource _dataSource;
+
+    public VerificadorDeTitularidade(NpgsqlDataSource dataSource) => _dataSource = dataSource;
+
+    public async Task<Guid?> ObterTitularAsync(Guid contaId, CancellationToken ct)
+    {
+        await using var comando = _dataSource.CreateCommand("SELECT titular_id FROM posicoes WHERE conta_id = @c");
+        comando.Parameters.AddWithValue("c", contaId);
+        return await comando.ExecuteScalarAsync(ct).ConfigureAwait(false) is Guid titular ? titular : null;
     }
 }

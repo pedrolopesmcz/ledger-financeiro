@@ -8,7 +8,7 @@ public class InvalidadorTests
     private static readonly DateTimeOffset Agora = new(2026, 11, 18, 15, 0, 0, TimeSpan.Zero);
 
     private static LancamentoRegistradoV1 Evento(Guid conta, DateTimeOffset quando) =>
-        new(Guid.NewGuid(), Guid.NewGuid(), conta, "ContaDigital", "Deposito", "Credito", 10m, 10m, 10m, quando, null);
+        new(Guid.NewGuid(), Guid.NewGuid(), conta, "ContaDigital", "Deposito", "Credito", 10m, 10m, 10m, quando, null, Guid.NewGuid());
 
     [Fact]
     public async Task Evento_de_hoje_invalida_a_posicao_e_o_dia()

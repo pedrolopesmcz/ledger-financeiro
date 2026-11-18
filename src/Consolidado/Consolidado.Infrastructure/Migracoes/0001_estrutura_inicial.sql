@@ -26,8 +26,10 @@ CREATE TABLE saldos_diarios (
 );
 
 -- Posição mais recente por conta: consulta de saldo atual em uma leitura por chave.
+-- titular_id vem no evento: permite checar a titularidade sem chamar o serviço de Lançamentos.
 CREATE TABLE posicoes (
     conta_id       uuid           PRIMARY KEY,
+    titular_id     uuid           NOT NULL,
     saldo          numeric(18, 2) NOT NULL,
     posicao_em     timestamptz    NOT NULL,
     atualizada_em  timestamptz    NOT NULL

@@ -16,7 +16,7 @@ public sealed class LancamentosApiTests : IAsyncLifetime
     public Task InitializeAsync()
     {
         _factory = new ApiFactory(Postgres, _containers.RabbitMq.GetConnectionString());
-        _client = _factory.CreateClient();
+        _client = _factory.ClienteBackoffice();
         return Task.CompletedTask;
     }
 

@@ -7,6 +7,8 @@
     <ProjectReference Include="..\Lancamentos.Application\Lancamentos.Application.csproj" />
     <ProjectReference Include="..\..\BuildingBlocks\Ledger.Messaging\Ledger.Messaging.csproj" />
     <ProjectReference Include="..\..\BuildingBlocks\Ledger.Postgres\Ledger.Postgres.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\Ledger.Seguranca\Ledger.Seguranca.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\Ledger.Observabilidade\Ledger.Observabilidade.csproj" />
   </ItemGroup>
   <ItemGroup>
     <!-- Migrações em SQL puro, versionadas e aplicadas em ordem (ver MigradorDeBanco). -->

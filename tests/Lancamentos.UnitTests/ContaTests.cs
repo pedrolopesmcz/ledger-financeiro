@@ -17,7 +17,7 @@ public class ContaTests
     [Fact]
     public void Abrir_conta_rejeita_id_vazio()
     {
-        var resultado = Conta.Abrir(Guid.Empty, TipoConta.ContaDigital, 0, Agora);
+        var resultado = Conta.Abrir(Guid.Empty, Guid.NewGuid(), TipoConta.ContaDigital, 0, Agora);
 
         Assert.Equal("conta_invalida", resultado.Erro!.Codigo);
     }
@@ -27,15 +27,23 @@ public class ContaTests
     [InlineData(10.123)]
     public void Abrir_conta_rejeita_limite_invalido(decimal limite)
     {
-        var resultado = Conta.Abrir(Guid.NewGuid(), TipoConta.CartaoCredito, limite, Agora);
+        var resultado = Conta.Abrir(Guid.NewGuid(), Guid.NewGuid(), TipoConta.CartaoCredito, limite, Agora);
 
         Assert.Equal("limite_invalido", resultado.Erro!.Codigo);
     }
 
     [Fact]
+    public void Abrir_conta_exige_titular()
+    {
+        var resultado = Conta.Abrir(Guid.NewGuid(), Guid.Empty, TipoConta.ContaDigital, 0, Agora);
+
+        Assert.Equal("titular_invalido", resultado.Erro!.Codigo);
+    }
+
+    [Fact]
     public void Abrir_conta_rejeita_tipo_desconhecido()
     {
-        var resultado = Conta.Abrir(Guid.NewGuid(), (TipoConta)42, 0, Agora);
+        var resultado = Conta.Abrir(Guid.NewGuid(), Guid.NewGuid(), (TipoConta)42, 0, Agora);
 
         Assert.Equal("tipo_conta_invalido", resultado.Erro!.Codigo);
     }

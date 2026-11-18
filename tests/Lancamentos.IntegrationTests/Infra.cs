@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Ledger.TestesComuns;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Npgsql;
@@ -58,7 +59,15 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
         // O relay é acionado manualmente nos testes, para controlar o momento da publicação.
         builder.UseSetting("Outbox:Habilitado", "false");
+
+        foreach (var (chave, valor) in Tokens.Configuracao)
+        {
+            builder.UseSetting(chave, valor);
+        }
     }
+
+    /// <summary>Cliente HTTP autenticado como backoffice (acesso a todas as contas).</summary>
+    public HttpClient ClienteBackoffice() => CreateClient().ComToken(Tokens.Backoffice());
 }
 
 public static class Http
@@ -86,9 +95,9 @@ public static class Http
     public static async Task<T> LerAsync<T>(this HttpResponseMessage resposta) =>
         (await resposta.Content.ReadFromJsonAsync<T>(Json))!;
 
-    public static async Task<Guid> AbrirContaAsync(this HttpClient client, string tipo, decimal limite)
+    public static async Task<Guid> AbrirContaAsync(this HttpClient client, string tipo, decimal limite, Guid? titular = null)
     {
-        var resposta = await client.PostAsJsonAsync("/contas", new { tipo, limite }, Json);
+        var resposta = await client.PostAsJsonAsync("/contas", new { tipo, limite, titularId = titular ?? Guid.NewGuid() }, Json);
         resposta.EnsureSuccessStatusCode();
         return (await resposta.LerAsync<ContaResposta>()).Id;
     }

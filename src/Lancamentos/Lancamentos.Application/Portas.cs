@@ -14,6 +14,9 @@ public interface IRepositorioDeContas
 
     Task<bool> JaFoiEstornadoAsync(Guid lancamentoId, CancellationToken ct);
 
+    /// <summary>Titular da conta, ou null se ela não existe. Leitura leve, sem carregar o agregado.</summary>
+    Task<Guid?> ObterTitularAsync(Guid contaId, CancellationToken ct);
+
     void Adicionar(Conta conta);
 
     void Adicionar(Lancamento lancamento);

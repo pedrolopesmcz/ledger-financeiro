@@ -3,11 +3,15 @@
 -- que muda a cada UPDATE da linha.
 CREATE TABLE contas (
     id          uuid           PRIMARY KEY,
+    titular_id  uuid           NOT NULL,
     tipo        smallint       NOT NULL,
     saldo       numeric(18, 2) NOT NULL DEFAULT 0,
     limite      numeric(18, 2) NOT NULL CHECK (limite >= 0),
     aberta_em   timestamptz    NOT NULL
 );
+
+-- Contas de um cliente ("minhas contas").
+CREATE INDEX ix_contas_titular ON contas (titular_id);
 
 -- Lançamentos: imutáveis (ADR 0010). Só INSERT.
 CREATE TABLE lancamentos (

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Utilitários compartilhados pelos testes: geração de tokens JWT de teste. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\BuildingBlocks\Ledger.Seguranca\Ledger.Seguranca.csproj" />
+  </ItemGroup>
+</Project>

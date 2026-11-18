@@ -4,6 +4,7 @@ using Lancamentos.Application;
 using Lancamentos.Domain.Contas;
 using Ledger.Contracts;
 using Microsoft.EntityFrameworkCore;
+using Ledger.Seguranca;
 using Npgsql;
 
 namespace Lancamentos.Infrastructure;
@@ -25,6 +26,13 @@ public sealed class RepositorioDeContas : IRepositorioDeContas
 
     public Task<bool> JaFoiEstornadoAsync(Guid lancamentoId, CancellationToken ct) =>
         _db.Lancamentos.AnyAsync(l => l.LancamentoOriginalId == lancamentoId, ct);
+
+    public async Task<Guid?> ObterTitularAsync(Guid contaId, CancellationToken ct) =>
+        await _db.Contas.AsNoTracking()
+            .Where(c => c.Id == contaId)
+            .Select(c => (Guid?)c.TitularId)
+            .FirstOrDefaultAsync(ct)
+            .ConfigureAwait(false);
 
     public void Adicionar(Conta conta) => _db.Contas.Add(conta);
 
@@ -83,4 +91,13 @@ public sealed class UnidadeDeTrabalhoEf : IUnidadeDeTrabalho
     }
 
     public void Descartar() => _db.ChangeTracker.Clear();
+}
+
+public sealed class VerificadorDeTitularidade : IVerificadorDeTitularidade
+{
+    private readonly IRepositorioDeContas _repositorio;
+
+    public VerificadorDeTitularidade(IRepositorioDeContas repositorio) => _repositorio = repositorio;
+
+    public Task<Guid?> ObterTitularAsync(Guid contaId, CancellationToken ct) => _repositorio.ObterTitularAsync(contaId, ct);
 }
