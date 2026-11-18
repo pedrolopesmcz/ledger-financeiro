@@ -68,7 +68,7 @@ jobs:
       - name: Logs em caso de falha
         if: failure()
         run: |
-          docker compose ps -a
-          for s in lancamentos-api consolidado-api consolidado-worker gateway keycloak; do
-            docker compose logs --no-color --tail=15 $s 2>&1 | grep -iE "error|fail|exception|crit" | head -5 | sed "s/^/::error::$s /" || true
+          docker compose ps -a --format '{{.Service}} {{.State}} {{.Status}}' | sed 's/^/::warning::/'
+          for s in $(docker compose ps -a --format '{{.Service}} {{.State}} {{.Health}}' | awk '$2!="running" || $3=="unhealthy" {print $1}' | sort -u); do
+            docker compose logs --no-color --tail=6 $s 2>&1 | cut -c1-400 | sed "s/^/::error::/"
           done
