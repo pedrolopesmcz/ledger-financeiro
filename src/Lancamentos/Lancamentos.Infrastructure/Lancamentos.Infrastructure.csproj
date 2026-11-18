@@ -6,6 +6,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Lancamentos.Application\Lancamentos.Application.csproj" />
     <ProjectReference Include="..\..\BuildingBlocks\Ledger.Messaging\Ledger.Messaging.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\Ledger.Postgres\Ledger.Postgres.csproj" />
   </ItemGroup>
   <ItemGroup>
     <!-- Migrações em SQL puro, versionadas e aplicadas em ordem (ver MigradorDeBanco). -->

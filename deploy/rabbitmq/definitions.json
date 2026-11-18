@@ -18,7 +18,7 @@
     },
     {
       "name": "consolidado.lancamentos.retry", "vhost": "/", "durable": true, "auto_delete": false,
-      "arguments": { "x-queue-type": "quorum", "x-message-ttl": 5000, "x-dead-letter-exchange": "", "x-dead-letter-routing-key": "consolidado.lancamentos" }
+      "arguments": { "x-queue-type": "quorum", "x-dead-letter-exchange": "", "x-dead-letter-routing-key": "consolidado.lancamentos" }
     },
     {
       "name": "consolidado.lancamentos.dlq", "vhost": "/", "durable": true, "auto_delete": false,

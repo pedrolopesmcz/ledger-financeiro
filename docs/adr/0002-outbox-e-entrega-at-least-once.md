@@ -20,3 +20,10 @@ Outbox com relay por polling usando `SELECT ... FOR UPDATE SKIP LOCKED`, o que p
 - (+) Lançamentos segue funcionando com o broker fora: os eventos esperam na outbox.
 - (-) Entrega **pelo menos uma vez**: se o relay cair após publicar e antes de marcar, o evento é publicado de novo. Por isso o consumidor precisa ser idempotente ([ADR 0003](0003-idempotencia-ponta-a-ponta.md)).
 - (-) Latência extra igual ao intervalo de polling. Evolução: CDC.
+
+## Onde o relay roda
+**Opções:** (A) dentro do processo da Lançamentos API, como `BackgroundService`; (B) num worker separado.
+
+**Decisão: A.** É mais simples de operar, escala junto com a API, e o `FOR UPDATE SKIP LOCKED` já torna seguro ter várias instâncias publicando em paralelo. O relay pode ser desligado por configuração (`Outbox:Habilitado`), o que permite migrar para a opção B sem mudar código: basta subir uma instância dedicada só com o relay ligado.
+
+**Quando revisitar:** se picos de HTTP passarem a atrasar a publicação (métrica de idade da outbox), ou se o relay passar a disputar conexões do pool com as requisições.

@@ -1,10 +1,12 @@
 using Microsoft.Extensions.Logging;
 using Npgsql;
 
-namespace Lancamentos.Infrastructure;
+using System.Reflection;
+
+namespace Ledger.Postgres;
 
 /// <summary>
-/// Aplica os scripts SQL embutidos (Migracoes/*.sql) em ordem, uma única vez.
+/// Aplica os scripts SQL embutidos no assembly informado (Migracoes/*.sql), em ordem, uma única vez.
 /// Um advisory lock impede que duas instâncias migrem ao mesmo tempo.
 /// Em produção isso rodaria como um job de deploy separado, antes da aplicação.
 /// </summary>
@@ -12,9 +14,10 @@ public static partial class MigradorDeBanco
 {
     private const long ChaveDoLock = 7_310_001;
 
-    public static async Task MigrarAsync(NpgsqlDataSource dataSource, ILogger logger, CancellationToken ct)
+    public static async Task MigrarAsync(NpgsqlDataSource dataSource, Assembly assembly, ILogger logger, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(dataSource);
+        ArgumentNullException.ThrowIfNull(assembly);
 
         await using var conexao = await dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
 
@@ -26,7 +29,6 @@ public static partial class MigradorDeBanco
                 "CREATE TABLE IF NOT EXISTS schema_migracoes (versao varchar(200) PRIMARY KEY, aplicada_em timestamptz NOT NULL DEFAULT now())",
                 ct).ConfigureAwait(false);
 
-            var assembly = typeof(MigradorDeBanco).Assembly;
             var scripts = assembly.GetManifestResourceNames()
                 .Where(n => n.EndsWith(".sql", StringComparison.Ordinal))
                 .Order(StringComparer.Ordinal);

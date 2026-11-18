@@ -1,0 +1,93 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using Consolidado.Core;
+using static Consolidado.IntegrationTests.Eventos;
+
+namespace Consolidado.IntegrationTests;
+
+[Collection(ColecaoIntegracao.Nome)]
+public sealed class ApiTests
+{
+    private readonly Containers _containers;
+
+    public ApiTests(Containers containers) => _containers = containers;
+
+    [Fact]
+    public async Task Saldo_atual_e_invalidado_pelo_worker_quando_chega_um_novo_lancamento()
+    {
+        var conta = Guid.NewGuid();
+        using var worker = _containers.CriarWorker();
+        await worker.StartAsync();
+        await using var api = new ApiFactory(_containers.Configuracao());
+        using var client = api.CreateClient();
+
+        await _containers.PublicarAsync(Novo(conta, 100m, Brasilia(18, 9)));
+        await Esperar.AteAsync(async () => (await client.GetAsync($"/contas/{conta}/saldo")).IsSuccessStatusCode, TimeSpan.FromSeconds(30), "primeiro saldo");
+        var primeiro = await client.GetFromJsonAsync<PosicaoAtual>($"/contas/{conta}/saldo", JsonSerializerOptions.Web);
+
+        // A validade do cache no teste é de 1 hora: só a invalidação explica o valor novo.
+        await _containers.PublicarAsync(Novo(conta, 50m, Brasilia(18, 10)));
+        await Esperar.AteAsync(
+            async () => (await client.GetFromJsonAsync<PosicaoAtual>($"/contas/{conta}/saldo", JsonSerializerOptions.Web))!.Saldo == 150m,
+            TimeSpan.FromSeconds(30),
+            "saldo atualizado após invalidação");
+
+        Assert.Equal(100m, primeiro!.Saldo);
+        await worker.StopAsync();
+    }
+
+    [Fact]
+    public async Task Consultas_de_consolidado_diario_e_saldo_no_instante()
+    {
+        var conta = Guid.NewGuid();
+        using var worker = _containers.CriarWorker();
+        await worker.StartAsync();
+        await using var api = new ApiFactory(_containers.Configuracao());
+        using var client = api.CreateClient();
+
+        await _containers.PublicarAsync(Novo(conta, 300m, Brasilia(17, 9)));
+        await _containers.PublicarAsync(Novo(conta, -50m, Brasilia(17, 15)));
+        await Esperar.AteAsync(
+            async () => (await client.GetFromJsonAsync<PosicaoAtual?>($"/contas/{conta}/saldo", JsonSerializerOptions.Web) is { Saldo: 250m }),
+            TimeSpan.FromSeconds(30),
+            "eventos consolidados");
+
+        var dia = await client.GetFromJsonAsync<ConsolidadoDiario>($"/contas/{conta}/consolidado/2026-11-17", JsonSerializerOptions.Web);
+        var instante = await client.GetFromJsonAsync<SaldoNoInstante>(
+            $"/contas/{conta}/saldo?em={Uri.EscapeDataString(Brasilia(17, 12).ToString("O"))}", JsonSerializerOptions.Web);
+
+        Assert.Equal((300m, 50m, 250m), (dia!.Creditos, dia.Debitos, dia.SaldoFinal));
+        Assert.Equal(300m, instante!.Saldo);
+        await worker.StopAsync();
+    }
+
+    [Fact]
+    public async Task Conta_sem_movimentos_retorna_404()
+    {
+        await using var api = new ApiFactory(_containers.Configuracao());
+        using var client = api.CreateClient();
+
+        var resposta = await client.GetAsync($"/contas/{Guid.NewGuid()}/saldo");
+
+        Assert.Equal(HttpStatusCode.NotFound, resposta.StatusCode);
+    }
+
+    [Fact]
+    public async Task Com_o_redis_fora_a_consulta_continua_respondendo_pelo_banco()
+    {
+        var conta = Guid.NewGuid();
+        using var worker = _containers.CriarWorker();
+        await worker.StartAsync();
+        await _containers.PublicarAsync(Novo(conta, 42m, Brasilia(18, 9)));
+
+        await using var api = new ApiFactory(_containers.Configuracao(redis: "127.0.0.1:1,abortConnect=false,connectTimeout=200,syncTimeout=200,asyncTimeout=200"));
+        using var client = api.CreateClient();
+
+        await Esperar.AteAsync(async () => (await client.GetAsync($"/contas/{conta}/saldo")).IsSuccessStatusCode, TimeSpan.FromSeconds(30), "saldo sem redis");
+        var posicao = await client.GetFromJsonAsync<PosicaoAtual>($"/contas/{conta}/saldo", JsonSerializerOptions.Web);
+
+        Assert.Equal(42m, posicao!.Saldo);
+        await worker.StopAsync();
+    }
+}

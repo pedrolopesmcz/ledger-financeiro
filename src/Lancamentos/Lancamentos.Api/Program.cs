@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Lancamentos.Api;
 using Lancamentos.Infrastructure;
+using Ledger.Postgres;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,6 +21,7 @@ if (app.Configuration.GetValue("Banco:MigrarAoIniciar", true))
 {
     await MigradorDeBanco.MigrarAsync(
         app.Services.GetRequiredService<NpgsqlDataSource>(),
+        typeof(LancamentosDbContext).Assembly,
         app.Logger,
         app.Lifetime.ApplicationStopping).ConfigureAwait(false);
 }

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Consolidado.Core\Consolidado.Core.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\Ledger.Messaging\Ledger.Messaging.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\Ledger.Postgres\Ledger.Postgres.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Migracoes\*.sql" />
+  </ItemGroup>
+</Project>
