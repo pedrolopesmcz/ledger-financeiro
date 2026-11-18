@@ -1,0 +1,8 @@
+**/bin/
+**/obj/
+**/TestResults/
+**/StrykerOutput/
+.git/
+.github/
+tests/
+docs/

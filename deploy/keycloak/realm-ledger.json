@@ -1,0 +1,89 @@
+{
+  "realm": "ledger",
+  "enabled": true,
+  "sslRequired": "none",
+  "accessTokenLifespan": 300,
+  "clientScopes": [
+    {
+      "name": "ledger-api",
+      "description": "Audiência e identificação do usuário (sub) nos tokens da API",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "false", "display.on.consent.screen": "false" },
+      "protocolMappers": [
+        {
+          "name": "audiencia",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": { "included.custom.audience": "ledger-api", "access.token.claim": "true", "id.token.claim": "false", "introspection.token.claim": "true" }
+        },
+        {
+          "name": "sub",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "config": { "access.token.claim": "true", "introspection.token.claim": "true" }
+        }
+      ]
+    },
+    { "name": "saldo:read", "protocol": "openid-connect", "attributes": { "include.in.token.scope": "true", "display.on.consent.screen": "false" } },
+    { "name": "lancamentos:write", "protocol": "openid-connect", "attributes": { "include.in.token.scope": "true", "display.on.consent.screen": "false" } },
+    { "name": "lancamentos:estorno", "protocol": "openid-connect", "attributes": { "include.in.token.scope": "true", "display.on.consent.screen": "false" } },
+    { "name": "contas:admin", "protocol": "openid-connect", "attributes": { "include.in.token.scope": "true", "display.on.consent.screen": "false" } },
+    { "name": "contas:todas", "protocol": "openid-connect", "attributes": { "include.in.token.scope": "true", "display.on.consent.screen": "false" } }
+  ],
+  "clients": [
+    {
+      "clientId": "app-canais",
+      "name": "Aplicativo do cliente",
+      "description": "Cliente público (app). Em produção: Authorization Code + PKCE. O password grant está ligado APENAS para a demonstração e os scripts locais.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "fullScopeAllowed": false,
+      "redirectUris": ["http://localhost:3000/*"],
+      "webOrigins": ["http://localhost:3000"],
+      "attributes": { "pkce.code.challenge.method": "S256" },
+      "defaultClientScopes": ["ledger-api", "saldo:read", "lancamentos:write"],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "backoffice",
+      "name": "Sistemas internos do banco",
+      "description": "Máquina para máquina (client credentials): rede de cartões, SPI, backoffice.",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "backoffice-secret-dev",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "fullScopeAllowed": false,
+      "defaultClientScopes": ["ledger-api", "saldo:read", "lancamentos:write", "lancamentos:estorno", "contas:admin", "contas:todas"],
+      "optionalClientScopes": []
+    }
+  ],
+  "users": [
+    {
+      "id": "6f1c2a10-0000-4000-8000-00000000a001",
+      "username": "ana",
+      "enabled": true,
+      "email": "ana@exemplo.com",
+      "emailVerified": true,
+      "firstName": "Ana",
+      "lastName": "Souza",
+      "requiredActions": [],
+      "credentials": [{ "type": "password", "value": "ana123", "temporary": false }]
+    },
+    {
+      "id": "6f1c2a10-0000-4000-8000-00000000b002",
+      "username": "bruno",
+      "enabled": true,
+      "email": "bruno@exemplo.com",
+      "emailVerified": true,
+      "firstName": "Bruno",
+      "lastName": "Lima",
+      "requiredActions": [],
+      "credentials": [{ "type": "password", "value": "bruno123", "temporary": false }]
+    }
+  ]
+}

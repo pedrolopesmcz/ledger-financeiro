@@ -1,0 +1,148 @@
+name: ledger
+
+x-app: &app
+  restart: unless-stopped
+  environment: &app-env
+    ASPNETCORE_ENVIRONMENT: Production
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
+    Autenticacao__Emissor: http://localhost:8080/realms/ledger
+    Autenticacao__EnderecoDeMetadados: http://keycloak:8080/realms/ledger/.well-known/openid-configuration
+    Autenticacao__ExigirHttps: "false"
+    Autenticacao__Audiencia: ledger-api
+
+services:
+  # ---------- Infraestrutura ----------
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ledger
+      POSTGRES_PASSWORD: ledger
+      POSTGRES_DB: lancamentos
+    volumes:
+      - ./deploy/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - postgres-dados:/var/lib/postgresql/data
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ledger -d consolidado"]
+      interval: 3s
+      retries: 30
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    volumes:
+      - ./deploy/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./deploy/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+    ports: ["15672:15672"]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      retries: 30
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
+      # Emissor público fixo (o que os clientes enxergam) e endpoints internos
+      # (JWKS) resolvidos pelo endereço de quem pergunta: keycloak:8080 dentro da rede.
+      KC_HOSTNAME: http://localhost:8080
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+    volumes:
+      - ./deploy/keycloak/realm-ledger.json:/opt/keycloak/data/import/realm-ledger.json:ro
+    ports: ["8080:8080"]
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 5s
+      retries: 60
+
+  aspire-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:9.5
+    environment:
+      DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
+    ports: ["18888:18888"]
+
+  # ---------- Aplicação ----------
+  lancamentos-api:
+    <<: *app
+    build:
+      context: .
+      args:
+        PROJETO: src/Lancamentos/Lancamentos.Api/Lancamentos.Api.csproj
+        DLL: Lancamentos.Api.dll
+    environment:
+      <<: *app-env
+      OTEL_SERVICE_NAME: lancamentos-api
+      ConnectionStrings__Lancamentos: Host=postgres;Database=lancamentos;Username=ledger;Password=ledger;Maximum Pool Size=50
+      RabbitMq__Uri: amqp://ledger:ledger@rabbitmq:5672/
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+
+  consolidado-worker:
+    <<: *app
+    build:
+      context: .
+      args:
+        PROJETO: src/Consolidado/Consolidado.Worker/Consolidado.Worker.csproj
+        DLL: Consolidado.Worker.dll
+    # Duas instâncias consumindo a mesma fila: escala horizontal do processamento.
+    deploy:
+      replicas: 2
+    environment:
+      <<: *app-env
+      OTEL_SERVICE_NAME: consolidado-worker
+      ConnectionStrings__Consolidado: Host=postgres;Database=consolidado;Username=ledger;Password=ledger;Maximum Pool Size=30
+      ConnectionStrings__Redis: redis:6379,abortConnect=false,connectTimeout=500,syncTimeout=500,asyncTimeout=500
+      RabbitMq__Uri: amqp://ledger:ledger@rabbitmq:5672/
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  consolidado-api:
+    <<: *app
+    build:
+      context: .
+      args:
+        PROJETO: src/Consolidado/Consolidado.Api/Consolidado.Api.csproj
+        DLL: Consolidado.Api.dll
+    environment:
+      <<: *app-env
+      OTEL_SERVICE_NAME: consolidado-api
+      ConnectionStrings__Consolidado: Host=postgres;Database=consolidado;Username=ledger;Password=ledger;Maximum Pool Size=50
+      ConnectionStrings__Redis: redis:6379,abortConnect=false,connectTimeout=500,syncTimeout=500,asyncTimeout=500
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+
+  gateway:
+    <<: *app
+    build:
+      context: .
+      args:
+        PROJETO: src/Gateway/Ledger.Gateway/Ledger.Gateway.csproj
+        DLL: Ledger.Gateway.dll
+    environment:
+      <<: *app-env
+      OTEL_SERVICE_NAME: gateway
+      ReverseProxy__Clusters__lancamentos__Destinations__principal__Address: http://lancamentos-api:8080/
+      ReverseProxy__Clusters__consolidado__Destinations__principal__Address: http://consolidado-api:8080/
+    ports: ["5000:8080"]
+    depends_on:
+      keycloak: { condition: service_healthy }
+      lancamentos-api: { condition: service_started }
+      consolidado-api: { condition: service_started }
+
+volumes:
+  postgres-dados:
