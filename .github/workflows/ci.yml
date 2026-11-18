@@ -70,6 +70,19 @@ jobs:
       - name: Teste ponta a ponta
         run: ./scripts/e2e.sh
 
+      - name: Teste de carga (k6)
+        run: |
+          ./scripts/carga.sh | tee carga.log
+          sed 's/^/::notice::/' resultados-carga/resumo.md
+          { echo "## Teste de carga"; cat resultados-carga/resumo.md; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publicar resultados da carga
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-carga
+          path: resultados-carga
+
       - name: Logs em caso de falha
         if: failure()
         run: |
@@ -77,3 +90,36 @@ jobs:
           for s in lancamentos-api consolidado-api gateway consolidado-worker; do
             docker compose logs --no-color $s 2>&1 | grep -E '"LogLevel":"(Error|Critical)"|Unhandled|Exception' | tail -2 | cut -c1-600 | sed "s/^/::error::$s /"
           done
+
+  mutacao:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Instalar Stryker.NET
+        run: dotnet tool install -g dotnet-stryker
+
+      - name: Mutação no domínio de Lançamentos
+        working-directory: tests/Lancamentos.UnitTests
+        run: dotnet stryker --config-file stryker-config.json
+
+      - name: Mutação no núcleo do Consolidado
+        working-directory: tests/Consolidado.UnitTests
+        run: dotnet stryker --config-file stryker-config.json
+
+      - name: Resumo
+        if: always()
+        run: |
+          python3 scripts/resumo-stryker.py --github
+          { echo "## Testes de mutação"; python3 scripts/resumo-stryker.py; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publicar relatórios
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorios-stryker
+          path: tests/*/StrykerOutput/**/reports/

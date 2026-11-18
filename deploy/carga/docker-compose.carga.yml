@@ -1,0 +1,8 @@
+# Sobreposição usada SÓ no teste de carga. Poucos usuários de teste simulam
+# milhares de clientes; por isso o limite POR CLIENTE do gateway é elevado aqui.
+# O comportamento do limite (429 + Retry-After) é validado nos testes do gateway.
+services:
+  gateway:
+    environment:
+      Limites__PorSegundo: "10000"
+      Limites__Rajada: "10000"

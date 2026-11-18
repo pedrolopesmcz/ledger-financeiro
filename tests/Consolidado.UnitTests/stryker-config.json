@@ -1,0 +1,8 @@
+{
+  "stryker-config": {
+    "project": "Consolidado.Core.csproj",
+    "reporters": ["html", "json", "progress", "cleartext"],
+    "mutation-level": "Standard",
+    "thresholds": { "high": 85, "low": 70, "break": 0 }
+  }
+}
