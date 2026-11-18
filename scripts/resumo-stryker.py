@@ -20,6 +20,6 @@ for caminho in sorted(glob.glob('tests/*/StrykerOutput/*/reports/mutation-report
     linhas_md.append(f"| {projeto} | {validos} | {detectados} | {contagem.get('Survived', 0)} | {contagem.get('NoCoverage', 0)} | {score:.1f}% |")
     if anotar:
         print(f"::notice::Stryker {projeto}: score {score:.1f}% ({detectados}/{validos})")
-        for s in sobreviventes[:25]:
-            print(f"::warning::{projeto} sobrevivente {s}")
+        # Uma única anotação com todos os sobreviventes (o GitHub limita a quantidade de anotações por passo).
+        print(f"::warning::{projeto} sobreviventes:%0A" + "%0A".join(sobreviventes))
 print('\n'.join(linhas_md))

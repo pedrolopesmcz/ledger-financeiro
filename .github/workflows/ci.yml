@@ -72,7 +72,8 @@ jobs:
 
       - name: Teste de carga (k6)
         run: |
-          ./scripts/carga.sh | tee carga.log
+          set -o pipefail
+          ./scripts/carga.sh 2>&1 | tee carga.log || { tail -25 carga.log | cut -c1-300 | sed 's/^/::error::/'; exit 1; }
           sed 's/^/::notice::/' resultados-carga/resumo.md
           { echo "## Teste de carga"; cat resultados-carga/resumo.md; } >> "$GITHUB_STEP_SUMMARY"
 
