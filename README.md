@@ -24,6 +24,24 @@ flowchart LR
 - **Lançamentos** continua aceitando movimentações mesmo com o Consolidado fora do ar (Outbox + fila durável).
 - **Consolidado** responde saldo atual, consolidado diário e saldo em um instante, com cache e consistência eventual explícita (`posicaoEm`).
 
+## Atendimento aos requisitos
+
+| Requisito | Onde está | Evidência |
+|---|---|---|
+| Registrar créditos e débitos | `src/Lancamentos` | Testes unitários e de integração |
+| Posição consolidada em um momento / consolidado diário | `src/Consolidado` | `GET /contas/{id}/saldo?em=...` e `/consolidado/{dia}` |
+| Lançamentos disponível com o Consolidado fora | Outbox + RabbitMQ ([ADR 0002](docs/adr/0002-outbox-e-entrega-at-least-once.md)) | Integração e E2E derrubam o Consolidado |
+| 50 req/s com no máximo 5% de perda | Cache, leituras por chave, escala horizontal | k6: 0% de perda, p95 5,5 ms |
+| Comunicação assíncrona, mensageria, outbox | `PublicadorOutbox`, `ConsumidorDeLancamentos` | Teste com broker fora |
+| Retry, reprocessamento e DLQ | Fila de retry com atraso e DLQ ([ADR 0013](docs/adr/0013-projecao-do-consolidado.md)) | Testes de falha transitória e mensagem inválida |
+| Idempotência | API (`Idempotency-Key`) e consumidor (`EventId`) | Reenvios simultâneos e duplicatas |
+| Consistência e concorrência | Concorrência otimista ([ADR 0004](docs/adr/0004-saldo-oficial-e-concorrencia-otimista.md)) | 30 compras simultâneas contra o limite |
+| Autenticação, autorização e proteção de endpoints | Keycloak, gateway e titularidade ([ADR 0009](docs/adr/0009-autenticacao-oauth2-keycloak.md)) | Testes de segurança e E2E |
+| Validação de entradas e dados sensíveis | Domínio e Problem Details | Testes unitários |
+| Testes de falha, reprocessamento, idempotência, integração, carga | `tests/`, `scripts/` | CI a cada push |
+| Arquitetura, fluxos, decisões, RNFs, trade-offs, evoluções | [`docs/arquitetura.md`](docs/arquitetura.md) e [`docs/adr`](docs/adr) | |
+| Compila sem warnings | `TreatWarningsAsErrors` | CI |
+
 ## Como executar
 
 Pré-requisito: Docker com Compose v2.
