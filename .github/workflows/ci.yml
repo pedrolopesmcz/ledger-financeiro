@@ -75,6 +75,7 @@ jobs:
           set -o pipefail
           ./scripts/carga.sh 2>&1 | tee carga.log || { tail -25 carga.log | cut -c1-300 | sed 's/^/::error::/'; exit 1; }
           sed 's/^/::notice::/' resultados-carga/resumo.md
+          grep -o 'FALHA .*' carga.log | head -15 | cut -c1-250 | sed 's/^/::warning::/' || true
           { echo "## Teste de carga"; cat resultados-carga/resumo.md; } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publicar resultados da carga

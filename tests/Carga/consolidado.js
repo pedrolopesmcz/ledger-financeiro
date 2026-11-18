@@ -3,7 +3,7 @@
 // Cenários simultâneos:
 //   pico      : 50 req/s de consultas por 60 s (mistura de cache hit e cache miss)
 //   escrita   : 10 lançamentos/s ao mesmo tempo, gerando eventos e invalidação de cache
-//   estresse  : depois do pico, sobe até 400 req/s para encontrar o limite
+//   estresse  : depois do pico, sobe até 1000 req/s para encontrar o limite
 import http from 'k6/http';
 import { check } from 'k6';
 
@@ -26,11 +26,12 @@ export const options = {
     },
     estresse: {
       executor: 'ramping-arrival-rate', exec: 'consultar', startTime: '65s',
-      startRate: 50, timeUnit: '1s', preAllocatedVUs: 50, maxVUs: 500,
+      startRate: 50, timeUnit: '1s', preAllocatedVUs: 100, maxVUs: 1500,
       stages: [
-        { target: 200, duration: '30s' },
-        { target: 400, duration: '30s' },
-        { target: 400, duration: '20s' },
+        { target: 300, duration: '30s' },
+        { target: 700, duration: '30s' },
+        { target: 1000, duration: '30s' },
+        { target: 1000, duration: '20s' },
       ],
     },
   },
@@ -75,8 +76,12 @@ export function consultar() {
     const instante = new Date(Date.now() - Math.floor(Math.random() * 30 * 86400000)).toISOString();
     res = http.get(`${GW}/contas/${conta}/saldo?em=${encodeURIComponent(instante)}`, params);
   }
-  check(res, { 'status 200': (x) => x.status === 200 });
+  if (!check(res, { 'status 200': (x) => x.status === 200 }) && falhasRegistradas++ < 15) {
+    console.warn(`FALHA ${res.status} ${params.tags.name} ${res.error || ''} ${String(res.body).slice(0, 150)}`);
+  }
 }
+
+let falhasRegistradas = 0;
 
 export function lancar() {
   const { conta } = sortear(leitores);
@@ -95,6 +100,9 @@ export function lancar() {
   check(res, { 'status 201': (x) => x.status === 201 });
 }
 
+// Duração de cada cenário, para calcular a vazão real (o k6 divide pela duração do teste inteiro).
+const duracoes = { pico: 60, escrita: 60, estresse: 110 };
+
 function linha(data, cenario) {
   const m = (nome) => data.metrics[`${nome}{scenario:${cenario}}`];
   const reqs = m('http_reqs');
@@ -102,14 +110,14 @@ function linha(data, cenario) {
   const dur = m('http_req_duration');
   if (!reqs || !dur) return `| ${cenario} | sem dados | | | | |`;
   const v = dur.values;
-  return `| ${cenario} | ${reqs.values.count} | ${reqs.values.rate.toFixed(1)} | ${(falhas.values.rate * 100).toFixed(2)}% | ${v['p(50)'].toFixed(1)} | ${v['p(95)'].toFixed(1)} | ${v['p(99)'].toFixed(1)} |`;
+  return `| ${cenario} | ${reqs.values.count} | ${(reqs.values.count / duracoes[cenario]).toFixed(1)} | ${(falhas.values.rate * 100).toFixed(2)}% | ${v['p(50)'].toFixed(1)} | ${v['p(95)'].toFixed(1)} | ${v['p(99)'].toFixed(1)} |`;
 }
 
 export function handleSummary(data) {
   const aprovado = Object.values(data.metrics)
     .every((m) => !m.thresholds || Object.values(m.thresholds).every((t) => t.ok));
   const md = [
-    '| Cenário | Requisições | Req/s | Perda | p50 (ms) | p95 (ms) | p99 (ms) |',
+    '| Cenário | Requisições | Req/s (média) | Perda | p50 (ms) | p95 (ms) | p99 (ms) |',
     '|---|---|---|---|---|---|---|',
     linha(data, 'pico'),
     linha(data, 'escrita'),
