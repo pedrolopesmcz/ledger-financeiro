@@ -297,7 +297,9 @@ Um trace atravessa gateway, API, outbox, RabbitMQ e Worker (contexto propagado n
 | [0012](adr/0012-observabilidade.md) | Observabilidade com OpenTelemetry |
 | [0013](adr/0013-projecao-do-consolidado.md) | Projeção do Consolidado: tabelas, dia contábil, paralelismo, retry e cache |
 
-## 12. Evoluções futuras
+## 12. Evoluções futuras: o que eu faria com mais tempo
+
+A ordem abaixo é a minha prioridade: primeiro o que torna a operação mais segura, depois produto, depois escala.
 
 **Curto prazo (operação)**
 - Conciliação periódica entre o saldo de autorização e o consolidado, com alerta de divergência.

@@ -2,7 +2,7 @@
 
 Razão financeiro para um banco digital: registra movimentações (créditos e débitos) de contas digitais e cartões de crédito e fornece a posição consolidada do saldo em qualquer momento. Projetado para continuar operando com falhas parciais, picos de demanda e dados sensíveis.
 
-> Desafio técnico de Arquiteto de Software. A documentação de arquitetura está em [`docs/arquitetura.md`](docs/arquitetura.md) e as decisões em [`docs/adr`](docs/adr).
+> Desafio técnico de Arquiteto de Software. A documentação de arquitetura está em [`docs/arquitetura.md`](docs/arquitetura.md), as decisões em [`docs/adr`](docs/adr) e o que eu faria com mais tempo na [seção 12 da arquitetura](docs/arquitetura.md#12-evoluções-futuras-o-que-eu-faria-com-mais-tempo).
 
 ## Visão rápida
 
@@ -44,7 +44,7 @@ flowchart LR
 
 ## Como executar
 
-Pré-requisito: Docker com Compose v2.
+Pré-requisitos: Docker com Compose v2. Os scripts usam `bash`, `curl` e `jq`; no Windows, rode-os pelo WSL ou Git Bash. O SDK do .NET 10 só é necessário para rodar os testes fora de containers.
 
 ```bash
 docker compose up -d --build --wait
