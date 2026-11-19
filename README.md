@@ -31,7 +31,7 @@ flowchart LR
 | Registrar créditos e débitos | `src/Lancamentos` | Testes unitários e de integração |
 | Posição consolidada em um momento / consolidado diário | `src/Consolidado` | `GET /contas/{id}/saldo?em=...` e `/consolidado/{dia}` |
 | Lançamentos disponível com o Consolidado fora | Outbox + RabbitMQ ([ADR 0002](docs/adr/0002-outbox-e-entrega-at-least-once.md)) | Integração e E2E derrubam o Consolidado |
-| 50 req/s com no máximo 5% de perda | Cache, leituras por chave, escala horizontal | k6: 0% de perda, p95 5,5 ms |
+| 50 req/s com no máximo 5% de perda | Cache, leituras por chave, escala horizontal | k6: 0% de perda, p95 5,2 ms |
 | Comunicação assíncrona, mensageria, outbox | `PublicadorOutbox`, `ConsumidorDeLancamentos` | Teste com broker fora |
 | Retry, reprocessamento e DLQ | Fila de retry com atraso e DLQ ([ADR 0013](docs/adr/0013-projecao-do-consolidado.md)) | Testes de falha transitória e mensagem inválida |
 | Idempotência | API (`Idempotency-Key`) e consumidor (`EventId`) | Reenvios simultâneos e duplicatas |
@@ -89,7 +89,7 @@ A CI (GitHub Actions) compila com warnings tratados como erro, roda os 121 teste
 
 | Indicador | Resultado |
 |---|---|
-| Pico de 50 req/s no Consolidado | **0% de perda**, p95 de 5,5 ms (requisito: até 5% de perda) |
+| Pico de 50 req/s no Consolidado | **0% de perda**, p95 de 5,2 ms (requisito: até 5% de perda) |
 | Estresse até 1.000 req/s | 0% de perda |
 | Score de mutação | 98,8% (Lançamentos) e 100% (Consolidado) |
 
