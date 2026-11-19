@@ -1,6 +1,6 @@
 # Qualidade e desempenho
 
-Resultados medidos na CI (GitHub Actions). Execução de referência: [run 44527068139](https://github.com/pedrolopesmcz/ledger-financeiro/actions/runs/44527068139). Os relatórios completos (k6 e Stryker) ficam como artefatos de cada execução.
+Resultados medidos na CI (GitHub Actions). Execução de referência: [run 44530201370](https://github.com/pedrolopesmcz/ledger-financeiro/actions/runs/44530201370). Os relatórios completos (k6 e Stryker) ficam como artefatos de cada execução.
 
 ## 1. Pirâmide de testes
 
@@ -51,11 +51,11 @@ Resultados medidos na CI (GitHub Actions). Execução de referência: [run 44527
 
 | Cenário | Requisições | Req/s (média) | Perda | p50 (ms) | p95 (ms) | p99 (ms) |
 |---|---|---|---|---|---|---|
-| Pico (requisito) | 3.001 | 50,0 | **0,00%** | 1,7 | **5,2** | 11,4 |
-| Escrita simultânea | 600 | 10,0 | 0,00% | 4,1 | 9,7 | 17,4 |
-| Estresse (50 até 1.000 req/s) | 65.749 | 597,7 | 0,00% | 1,8 | 6,2 | 13,0 |
+| Pico (requisito) | 3.001 | 50,0 | **0,00%** | 2,3 | **6,8** | 13,1 |
+| Escrita simultânea | 600 | 10,0 | 0,00% | 5,1 | 11,3 | 19,7 |
+| Estresse (50 até 1.000 req/s) | 65.647 | 596,8 | 0,00% | 2,1 | 7,7 | 24,0 |
 
-**Requisito atendido com folga:** zero perda a 50 req/s e nenhuma perda até 1.000 req/s, cerca de 20 vezes o pico exigido. O p99 no estresse varia entre execuções (de 13 ms a 74 ms nas rodadas registradas na CI): é o primeiro indicador a reagir à saturação, ainda longe de virar perda.
+**Requisito atendido com folga:** zero perda a 50 req/s e nenhuma perda até 1.000 req/s, cerca de 20 vezes o pico exigido. O p99 no estresse varia entre execuções (entre 13 ms e 74 ms nas rodadas feitas durante o desenvolvimento): é o primeiro indicador a reagir à saturação, ainda longe de virar perda.
 
 ### Ressalvas (o que estes números NÃO dizem)
 - **Ambiente:** uma única máquina da CI, com todos os containers e o próprio k6 dividindo CPU, sem TLS e sem latência de rede real. Em produção, a latência absoluta será maior; o que se transporta é a **ordem de grandeza da folga** e o comportamento sem perda.

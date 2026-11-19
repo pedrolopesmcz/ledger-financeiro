@@ -47,7 +47,7 @@ O núcleo do razão (lançamento, saldo, concorrência, outbox) é único. As re
 | Lançamentos disponível com o Consolidado fora | Aceita movimentações | Atendido | Integração e E2E derrubam o Consolidado |
 | Throughput do Consolidado | 50 req/s | 50 req/s sustentados; estresse até 1.000 req/s | k6 na CI |
 | Perda no pico | no máximo 5% (meta interna: abaixo de 1%) | **0%** | k6 na CI |
-| Latência de consulta | p95 abaixo de 200 ms | p95 de 5,2 ms (ambiente de CI, ver ressalvas) | k6 na CI |
+| Latência de consulta | p95 abaixo de 200 ms | p95 de 6,8 ms (ambiente de CI, ver ressalvas) | k6 na CI |
 | Durabilidade | Nenhum lançamento confirmado (201) se perde | Atendido | Outbox na mesma transação; teste com broker fora |
 | Idempotência | Reenvio não duplica | Atendido | Integração e E2E |
 | Concorrência | Operações simultâneas não ultrapassam o limite | Atendido | 30 compras simultâneas contra o mesmo limite |
